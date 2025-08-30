@@ -1,3 +1,13 @@
+Codigo desenvolvido para o trabalho Uma Analise de Sentimentos dos Brasileiros Sobre o Problema do Desmatamento e Queimadas no Bluesky.
+
+LeIA (Léxico para Inferência Adaptada) é um fork do léxico e ferramenta para análise de sentimentos [VADER](https://github.com/cjhutto/vaderSentiment) criado por Rafael José de Alencar Almeida [disponivel aqui](https://github.com/rafjaa/LeIA/)
+
+### Para instalar as bibliotecas
+pip install -r requirements.txt
+
+### Para instalar o spacy
+python -m spacy download pt_core_news_sm
+
 # Análise de Sentimentos em Português
 
 LeIA (Léxico para Inferência Adaptada) é um fork do léxico e ferramenta para análise de sentimentos <a href="https://github.com/cjhutto/vaderSentiment">VADER</a> (Valence Aware Dictionary and sEntiment Reasoner) adaptado para textos em português, com suporte para emojis e foco na análise de sentimentos de textos expressos em mídias sociais - mas funcional para textos de outros domínios.
