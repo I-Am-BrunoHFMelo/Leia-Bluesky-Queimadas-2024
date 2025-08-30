@@ -22,8 +22,8 @@ logging.basicConfig(
 # ----------------- CONSTANTES -----------------
 PDS_URL = "https://bsky.social/xrpc"
 
-USERNAME = "dark-rainbow.bsky.social"
-PASSWORD = "rbwe-bzsz-rjsn-4l7b"
+USERNAME = "SEU NOME DE USUARIO"
+PASSWORD = "SUA SENHA"
 
 SEARCH_TERMS = [
     "queimada", "queimadas", "desmatamento", "fumaça", "mudanças climáticas",
