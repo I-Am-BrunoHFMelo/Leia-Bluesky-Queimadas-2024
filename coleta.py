@@ -19,11 +19,10 @@ logging.basicConfig(
     ]
 )
 
-# ----------------- CONSTANTES -----------------
 PDS_URL = "https://bsky.social/xrpc"
 
-USERNAME = "SEU NOME DE USUARIO"
-PASSWORD = "SUA SENHA"
+USERNAME = "SEU_NOME_USUARIO"
+PASSWORD = "SUA_SENHA"
 
 SEARCH_TERMS = [
     "queimada", "queimadas", "desmatamento", "fumaça", "mudanças climáticas",
@@ -32,7 +31,7 @@ SEARCH_TERMS = [
 ]
 
 START_DATE = datetime(2024, 8, 1, 0, 0, 0, tzinfo=timezone.utc)
-END_DATE   = datetime(2024, 9, 30, 23, 59, 59, tzinfo=timezone.utc)
+END_DATE  = datetime(2024, 9, 30, 23, 59, 59, tzinfo=timezone.utc)
 SINCE_STR = START_DATE.strftime('%Y-%m-%dT%H:%M:%SZ')
 UNTIL_STR = END_DATE.strftime('%Y-%m-%dT%H:%M:%SZ')
 
@@ -72,7 +71,7 @@ def refresh():
     session_data["refresh"] = data["refreshJwt"]
     logging.info("Token renovado.")
 
-# ----------------- REQUISIÇÃO -----------------
+# ----------------- REQUISIÇÃO ROBUSTA (com tratamento 429) -----------------
 def request_pds(method: str, endpoint: str, use_auth: bool = True, **kwargs):
     url = f"{PDS_URL}/{endpoint}"
     for attempt in range(MAX_RETRIES_5XX):
@@ -238,7 +237,6 @@ def coletar_replies(uri: str):
             "Reposts": rep.get('repostCount', 0),
             "Quotes": rep.get('quoteCount', 0),
             "Tipo": "Reply",
-            "Post Original": uri
         })
 
     return replies
@@ -276,12 +274,13 @@ if __name__ == "__main__":
                 uri = post["Link"]
                 future = executor.submit(coletar_replies, uri)
                 future_to_post[future] = post
-                time.sleep(STAGGER_SUBMIT)
+                time.sleep(STAGGER_SUBMIT)  # espalha requisições para reduzir bursts
 
             for future in as_completed(future_to_post):
                 base_post = future_to_post[future]
                 try:
                     replies = future.result()
+                    # deduplicação de replies (por uri)
                     added_replies = 0
                     for reply in replies:
                         rlink = reply.get("Link", "")

@@ -72,7 +72,7 @@ CUSTOM_STOP = {
     "porque","porquê","por que","por","pois","entao","então","desde","ate","até",
     "sobre","depois","antes","tambem","também","mesmo","mesma","mesmos","mesmas",
     "num","nuns","numa","numas","dum","duns","duma","dumas","bluesky","blsky","social",
-    "app","profile","org","br","com","www","http","https","rt","via","nan","bsky","novela",
+    "app","profile","org","br","com","www","http","https","rt","via","nan","bsky",
     "poro","emo","emesse","enum","de","o","deo","de o","por o"
 }
 ALL_STOP = BASE_STOP.union(CUSTOM_STOP)
@@ -95,35 +95,69 @@ def load_and_clean(csv_path: str, text_col: str, term_col: str) -> pd.DataFrame:
     df["TextoLimpo"] = df[text_col].apply(clean_text)
     return df
 
-# -------------------- ANÁLISE DE SENTIMENTO --------------------
 
+# -------------------- ANÁLISE DE SENTIMENTO --------------------
 def analyze_sentiments(df: pd.DataFrame, analyzer: SentimentIntensityAnalyzer,
-                       text_col: str, pos_thresh=0.05, neg_thresh=-0.05) -> pd.DataFrame:
+                       text_col: str, pos_thresh: float = 0.05, neg_thresh: float = -0.05) -> pd.DataFrame:    
     df["Sentimento"] = df[text_col].apply(lambda x: analyzer.polarity_scores(str(x))["compound"])
-    conditions = [df["Sentimento"] > pos_thresh, df["Sentimento"] < neg_thresh]
-    choices = ["Positivo", "Negativo"]
-    df["Classificacao"] = np.select(conditions, choices, default="Neutro")
+    
+    df["Classificacao"] = "Neutro"
+    
+    df.loc[df["Sentimento"] > pos_thresh, "Classificacao"] = "Positivo"
+    df.loc[df["Sentimento"] < neg_thresh, "Classificacao"] = "Negativo"
+    
+    counts = df["Classificacao"].value_counts()
+    logging.info(f"Contagem de sentimentos: {counts.to_dict()}")
+    
     return df
 
+
 # -------------------- VISUALIZAÇÕES --------------------
+
+def plot_global_distribution(df: pd.DataFrame, save_dir: str):
+    os.makedirs(save_dir, exist_ok=True)
+    palette = {"Positivo": "#2ca02c", "Negativo": "#d62728", "Neutro": "#7f7f7f"}
+
+    counts = df["Classificacao"].value_counts().reindex(palette.keys(), fill_value=0)
+
+    fig, ax = plt.subplots(figsize=(6, 4))
+    bars = ax.bar(counts.index, counts.values, color=[palette[s] for s in counts.index])
+
+    for bar, val in zip(bars, counts.values):
+        ax.text(bar.get_x() + bar.get_width() / 2, val + 0.5, f'{val:,}'.replace(',', '.'),
+                ha='center', va='bottom', fontweight='bold')
+
+    ax.set_title("Distribuição Global de Sentimentos")
+    ax.set_ylabel("Número de Postagens")
+    ax.set_ylim(0, counts.values.max() * 1.2 if counts.values.max() > 0 else 1)
+
+    plt.tight_layout()
+    fname = os.path.join(save_dir, "distribuicao_global.png")
+    fig.savefig(fname, dpi=300, bbox_inches="tight")
+    logging.info(f"Gráfico de distribuição global salvo: {fname}")
+    plt.show()
+    plt.close(fig)
+
 
 def plot_distribution_per_term(df: pd.DataFrame, save_dir: str):
     os.makedirs(save_dir, exist_ok=True)
     palette = {"Positivo":"#2ca02c","Negativo":"#d62728","Neutro":"#7f7f7f"}
-    
+
     for termo in df["Termo"].unique():
         df_term = df[df["Termo"] == termo]
-        counts = df_term["Classificacao"].value_counts()
-        
+
+        counts = df_term["Classificacao"].value_counts().reindex(palette.keys(), fill_value=0)
+
         fig, ax = plt.subplots(figsize=(6,4))
         bars = ax.bar(counts.index, counts.values, color=[palette[s] for s in counts.index])
         
         for bar, val in zip(bars, counts.values):
-            ax.text(bar.get_x() + bar.get_width()/2, val + 0.5, str(val), ha='center', va='bottom', fontweight='bold')
+            ax.text(bar.get_x() + bar.get_width()/2, val + 0.5, str(val), 
+                    ha='center', va='bottom', fontweight='bold')
         
         ax.set_title(f"Distribuição de Sentimentos - {termo}")
         ax.set_ylabel("Número de Postagens")
-        ax.set_ylim(0, counts.values.max() * 1.2)
+        ax.set_ylim(0, counts.values.max() * 1.2 if counts.values.max() > 0 else 1)
         
         plt.tight_layout()
         fname = os.path.join(save_dir, f"distribuicao_{termo.lower().replace(' ','_')}.png")
@@ -132,8 +166,36 @@ def plot_distribution_per_term(df: pd.DataFrame, save_dir: str):
         plt.show()
         plt.close(fig)
 
+def plot_global_sentiment_intensity(df: pd.DataFrame, save_dir: str):
+    os.makedirs(save_dir, exist_ok=True)
+    
+    media_pos = df[df["Classificacao"]=="Positivo"]["Sentimento"].mean()
+    media_neg = df[df["Classificacao"]=="Negativo"]["Sentimento"].mean()
+    media_pos = media_pos if not np.isnan(media_pos) else 0
+    media_neg = media_neg if not np.isnan(media_neg) else 0
 
-def plot_sentiment_intensity(df: pd.DataFrame, save_dir: str):
+    fig, ax = plt.subplots(figsize=(8,5))
+    bars = ax.bar(["Positivo","Negativo"], [media_pos, media_neg],
+                  color=["#2ca02c","#d62728"], alpha=0.8)
+    
+    for bar, valor in zip(bars, [media_pos, media_neg]):
+        ax.text(bar.get_x() + bar.get_width()/2, valor + 0.02 if valor>=0 else valor - 0.02,
+                f"{valor:.3f}", ha="center", va='bottom' if valor>=0 else 'top', fontweight="bold")
+    
+    ax.set_title("Intensidade Média Global de Sentimento")
+    ax.set_ylabel("Score Médio (Compound)")
+    ax.axhline(0, color="black", linewidth=0.8)
+    ax.set_ylim(-1.1, 1.1)
+    
+    plt.tight_layout()
+    fname = os.path.join(save_dir, "intensidade_global.png")
+    fig.savefig(fname, dpi=300, bbox_inches="tight")
+    logging.info(f"Gráfico de intensidade global salvo: {fname}")
+    plt.show()
+    plt.close(fig)
+
+def plot_sentiment_intensity_per_term(df: pd.DataFrame, save_dir: str):
+    """Gera gráficos de intensidade de sentimento por termo com eixo Y fixo."""
     os.makedirs(save_dir, exist_ok=True)
     for termo in df["Termo"].unique():
         df_term = df[df["Termo"]==termo]
@@ -141,47 +203,76 @@ def plot_sentiment_intensity(df: pd.DataFrame, save_dir: str):
         media_neg = df_term[df_term["Classificacao"]=="Negativo"]["Sentimento"].mean()
         media_pos = media_pos if not np.isnan(media_pos) else 0
         media_neg = media_neg if not np.isnan(media_neg) else 0
+        
         fig, ax = plt.subplots(figsize=(8,5))
         bars = ax.bar(["Positivo","Negativo"], [media_pos, media_neg],
                       color=["#2ca02c","#d62728"], alpha=0.8)
+                      
         for bar, valor in zip(bars, [media_pos, media_neg]):
-            ax.text(bar.get_x() + bar.get_width()/2, valor + 0.01 if valor>=0 else valor - 0.01,
+            ax.text(bar.get_x() + bar.get_width()/2, valor + 0.02 if valor>=0 else valor - 0.02,
                     f"{valor:.3f}", ha="center", va='bottom' if valor>=0 else 'top', fontweight="bold")
+                    
         ax.set_title(f"Intensidade Média - {termo}")
-        ax.set_ylabel("Score Médio")
-        ax.axhline(0, color="black")
+        ax.set_ylabel("Score Médio (Compound)")
+        ax.axhline(0, color="black", linewidth=0.8)
+        ax.set_ylim(-1.1, 1.1)
+        
         plt.tight_layout()
         fname = os.path.join(save_dir, f"intensidade_{termo.lower().replace(' ','_')}.png")
         fig.savefig(fname, dpi=300, bbox_inches="tight")
-        logging.info(f"Gráfico salvo: {fname}")
+        logging.info(f"Gráfico de intensidade para {termo} salvo: {fname}")
         plt.show()
         plt.close(fig)
+
 
 def plot_engagement_by_sentiment(df: pd.DataFrame, save_dir: str):
     os.makedirs(save_dir, exist_ok=True)
 
     eng_cols = ["Likes","Replies","Reposts","Quotes"]
-    df_eng = df.groupby("Classificacao")[eng_cols].mean().round(2)
+    sentimentos = ["Positivo", "Negativo", "Neutro"]
 
-    # Cria o heatmap
-    plt.figure(figsize=(8,6))
-    sns.heatmap(df_eng, annot=True, fmt=".2f", cmap="YlGnBu", cbar=True)
+    def gerar_heatmap(data, titulo, fname):
+        data = data.reindex(sentimentos).fillna(0)
 
-    plt.title("Engajamento Médio por Sentimento", fontsize=14)
-    plt.ylabel("Sentimento")
-    plt.xlabel("Métrica de Engajamento")
-    plt.tight_layout()
+        plt.figure(figsize=(8,6))
+        sns.heatmap(data, annot=True, fmt=".2f", cmap="YlGnBu", cbar=True)
 
-    fname = os.path.join(save_dir, "heatmap_engajamento_sentimento.png")
-    plt.savefig(fname, dpi=300, bbox_inches="tight")
-    logging.info(f"Heatmap salvo: {fname}")
-    plt.show()
-    plt.close()        
+        plt.title(titulo, fontsize=14)
+        plt.ylabel("Sentimento")
+        plt.xlabel("Métrica de Engajamento")
+        plt.tight_layout()
 
-# --- Dicionário de unificação ---
+        plt.savefig(fname, dpi=300, bbox_inches="tight")
+        logging.info(f"Heatmap salvo: {fname}")
+        plt.show()
+        plt.close()
+
+    # --- Heatmap Global ---
+    df_eng_global = df.groupby("Classificacao")[eng_cols].mean().round(2)
+    fname_global = os.path.join(save_dir, "heatmap_engajamento_global.png")
+    gerar_heatmap(df_eng_global, "Engajamento Médio por Sentimento (Global)", fname_global)
+
+    # --- Heatmap por Termo ---
+    for termo in df["Termo"].unique():
+        df_term = df[df["Termo"] == termo]
+        df_eng_term = df_term.groupby("Classificacao")[eng_cols].mean()
+
+        fname_term = os.path.join(
+            save_dir, f"heatmap_engajamento_{termo.lower().replace(' ','_')}.png"
+        )
+        gerar_heatmap(
+            df_eng_term,
+            f"Engajamento Médio por Sentimento - {termo}",
+            fname_term
+        )        
+
+
+# --- Dicionário de unificação (expressões e variações) ---
 term_unify_map = {
     "queimada": "queimadas",
     "queimadas": "queimadas",
+    "novela": "novelas",
+    "novelas": "novelas",
     "desmatamento": "desmatamento",
     "fumaça": "fumaca",
     "fumaca": "fumaca",
@@ -201,7 +292,6 @@ term_unify_map = {
 }
 
 def unify_tokens(text: str) -> str:
-    """Substitui variações e expressões compostas por uma forma única antes da tokenização."""
     text = text.lower()
     text = remove_accents(text)
     for old, new in term_unify_map.items():
@@ -296,7 +386,7 @@ def main():
 
     logging.info("Analisando sentimentos...")
     analyzer = SentimentIntensityAnalyzer()
-    df = analyze_sentiments(df, analyzer, TEXT_COL, 0.05, 0.05)
+    df = analyze_sentiments(df, analyzer, TEXT_COL, pos_thresh=0.05, neg_thresh=-0.05)
 
     out_csv = os.path.join(OUT_DIR,"dados_com_sentimento.csv")
     df.to_csv(out_csv, index=False, encoding="utf-8-sig")
@@ -311,10 +401,12 @@ def main():
     plot_engagement_by_sentiment(df, eng_dir)
 
     logging.info("Gerando gráficos de distribuição...")
+    plot_global_distribution(df, dist_dir)
     plot_distribution_per_term(df, dist_dir)
 
     logging.info("Gerando gráficos de intensidade média...")
-    plot_sentiment_intensity(df, intensity_dir)
+    plot_global_sentiment_intensity(df, intensity_dir)
+    plot_sentiment_intensity_per_term(df, intensity_dir)
 
     logging.info("Gerando WordClouds por termo...")
     generate_wordclouds(df, wc_dir)

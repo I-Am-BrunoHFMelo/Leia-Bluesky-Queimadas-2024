@@ -30,8 +30,8 @@ import pyLDAvis.gensim_models as gensimvis
 
 CSV_PATH   = "dados_completos.csv"
 TEXT_COL   = "Conteúdo"
-
 OUT_DIR    = "saida_lda"
+
 os.makedirs(OUT_DIR, exist_ok=True)
 
 logging.basicConfig(
@@ -45,7 +45,7 @@ logging.basicConfig(
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-# ---------------------- NLTK ----------------------
+# ---------------------- NLTK: download seguro ----------------------
 
 def safe_nltk_download(resource: str, path: str):
     try:
@@ -55,7 +55,7 @@ def safe_nltk_download(resource: str, path: str):
 
 safe_nltk_download("stopwords", "corpora/stopwords")
 
-# ------------------------ STOPWORDS ---------------------------
+# ------------------------ STOPWORDS pt-BR ---------------------------
 
 BASE_STOP = set(stopwords.words("portuguese"))
 CUSTOM_STOP = {
@@ -79,6 +79,7 @@ ALL_STOP = BASE_STOP.union(CUSTOM_STOP)
 
 # ----------------------- PREPROCESSAMENTO --------------------------
 
+# Regex utilitários
 RE_URL      = re.compile(r"https?://\S+|www\.\S+", flags=re.IGNORECASE)
 RE_MENTION  = re.compile(r"(?<!\w)@[\w\.\-]+")
 RE_HASHTAG  = re.compile(r"(?<!\w)#[\w\_]+")
@@ -90,7 +91,6 @@ RE_NUM      = re.compile(r"\b\d+([.,]\d+)?\b")
 RE_SPACE    = re.compile(r"\s+")
 
 def clean_text_basic(t: str) -> str:
-    """Limpeza textual antes do spaCy: remove URL, @, #, emojis, números; padroniza espaços."""
     if not isinstance(t, str):
         return ""
     t = t.strip().lower()
@@ -105,20 +105,16 @@ def clean_text_basic(t: str) -> str:
 def spacy_lemmas(
     texts: List[str],
     nlp,
-    pos_whitelist=("NOUN","PROPN","ADJ","VERB"),
+    pos_whitelist=("NOUN","PROPN","ADJ","VERB"), 
     min_len=3,
     batch_size=1000,
     n_process=2
 ) -> List[List[str]]:
-    """
-    Lematiza e filtra tokens por POS e tamanho.
-    Usa nlp.pipe para paralelizar e acelerar.
-    """
     processed = []
     for doc in nlp.pipe(texts, batch_size=batch_size, n_process=n_process):
         toks = []
         for tok in doc:
-            if not tok.is_alpha:
+            if not tok.is_alpha:          # ignora tokens com dígitos/pontuação
                 continue
             if tok.pos_ not in pos_whitelist:
                 continue
@@ -135,7 +131,6 @@ def spacy_lemmas(
 
 def make_dict_corpus(texts: List[List[str]],
                      no_below=10, no_above=0.3, keep_n=100000):
-    """Cria dicionário e corpus com filtros de frequência."""
     dictionary = corpora.Dictionary(texts)
     dictionary.filter_extremes(no_below=no_below, no_above=no_above, keep_n=keep_n)
     corpus = [dictionary.doc2bow(t) for t in texts]
@@ -148,10 +143,6 @@ def grid_coherence(
     k_min=4, k_max=12,
     passes=10, iterations=400, random_state=42
 ) -> Tuple[int, list]:
-    """
-    Testa K em [k_min, k_max] e retorna (K_melhor, lista_de_resultados).
-    Cada item da lista: (k, coherence_score).
-    """
     results = []
     for k in range(k_min, k_max + 1):
         lda = LdaModel(
@@ -250,6 +241,7 @@ def save_topic_keywords(lda: LdaModel, out_csv: str, topn=15):
 # ----------------------------- MAIN --------------------------------
 
 def main():
+
     logging.info("Carregando CSV...")
     df = pd.read_csv(CSV_PATH)
     if TEXT_COL not in df.columns:
@@ -265,7 +257,7 @@ def main():
     texts = spacy_lemmas(
         clean.tolist(),
         nlp,
-        pos_whitelist=("NOUN","PROPN","ADJ", "VERB"),
+        pos_whitelist=("NOUN","PROPN","ADJ", "VERB"),  # ajuste se quiser incluir VERB
         min_len=3,
         batch_size=1000,
         n_process=2
@@ -296,7 +288,7 @@ def main():
 
     dom_k, dom_p = assign_dominant_topic(lda, corpus)
     df["Topico_Principal"] = dom_k
-    df["Topico_Prob"]      = dom_p
+    df["Topico_Prob"] = dom_p
 
     save_topic_keywords(lda, os.path.join(OUT_DIR, "topicos_palavras.csv"), topn=20)
     save_wordclouds(lda, OUT_DIR, topn=30)
