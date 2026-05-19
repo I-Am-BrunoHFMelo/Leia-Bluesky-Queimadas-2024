@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leia-Bluesky-Queimadas-2024 | Descrição do Projeto</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #64748b;
+            --bg: #f8fafc;
+            --text: #1e293b;
+            --card-bg: #ffffff;
+            --accent: #e11d48;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background-color: var(--bg);
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+            color: white;
+            padding: 3rem 1rem;
+            text-align: center;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        h1 { margin: 0; font-size: 2.2rem; }
+        .subtitle { opacity: 0.9; font-size: 1.1rem; margin-top: 0.5rem; }
+        
+        .section {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+        }
+        h2 { color: var(--primary); border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+        .card {
+            border: 1px solid #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            transition: transform 0.2s;
+        }
+        .card:hover { transform: translateY(-5px); }
+        .card h3 { margin-top: 0; color: var(--primary); }
+        
+        code {
+            background: #f1f5f9;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .tech-tag {
+            display: inline-block;
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 0.2rem 0.6rem;
+            border-radius: 1rem;
+            font-size: 0.85rem;
+            margin: 0.2rem;
+            font-weight: 600;
+        }
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            color: var(--secondary);
+            font-size: 0.9rem;
+            padding-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Leia-Bluesky-Queimadas-2024</h1>
+        <p class="subtitle">Análise de Sentimentos e Tópicos sobre Desmatamento e Queimadas no Bluesky</p>
+    </header>
+
+    <div class="section">
+        <h2>Sobre o Projeto</h2>
+        <p>Este repositório contém as ferramentas desenvolvidas para a análise da opinião pública brasileira sobre as crises ambientais de 2024 (agosto e setembro). O sistema realiza desde a coleta automatizada de dados na rede social Bluesky até a extração de temas latentes e a polaridade emocional dos discursos.</p>
+    </div>
+
+    <div class="section">
+        <h2>Componentes Principais</h2>
+        <div class="grid">
+            <div class="card">
+                <h3>1. Coleta (<code>coleta.py</code>)</h3>
+                <p>Integração com o AT Protocol para buscar postagens e respostas (replies). Implementa controle de <i>rate limit</i>, autenticação e salvamento em CSV.</p>
+            </div>
+            <div class="card">
+                <h3>2. Sentimento (<code>sentimento.py</code>)</h3>
+                <p>Utiliza o léxico <b>LeIA</b> para classificar textos em Positivo, Negativo ou Neutro. Gera nuvens de palavras e heatmaps de engajamento.</p>
+            </div>
+            <div class="card">
+                <h3>3. Tópicos (<code>topicos.py</code>)</h3>
+                <p>Aplica modelagem <b>LDA (Latent Dirichlet Allocation)</b> para identificar os principais assuntos discutidos, gerando visualizações interativas com pyLDAvis.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Tecnologias Utilizadas</h2>
+        <div>
+            <span class="tech-tag">Python 3.x</span>
+            <span class="tech-tag">Pandas</span>
+            <span class="tech-tag">SpaCy (pt_core_news_sm)</span>
+            <span class="tech-tag">Gensim (LDA)</span>
+            <span class="tech-tag">NLTK</span>
+            <span class="tech-tag">Matplotlib & Seaborn</span>
+            <span class="tech-tag">VADER / LeIA</span>
+            <span class="tech-tag">pyLDAvis</span>
+            <span class="tech-tag">AT Protocol (Bluesky API)</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Como Funciona o Fluxo</h2>
+        <ol>
+            <li><b>Coleta:</b> Executa-se <code>coleta.py</code> com credenciais do Bluesky para gerar <code>dados_completos.csv</code>.</li>
+            <li><b>Análise:</b> <code>sentimento.py</code> processa os textos, limpa ruídos e classifica o sentimento.</li>
+            <li><b>Modelagem:</b> <code>topicos.py</code> agrupa as mensagens por temas similares e exporta um painel interativo em HTML.</li>
+        </ol>
+    </div>
+
+    <footer>
+        <p>Baseado no Léxico LeIA (Rafael J. A. Almeida) e VADER (C.J. Hutto).</p>
+        <p>Desenvolvido para análise de dados ambientais no Brasil em 2024.</p>
+    </footer>
+</div>
+
+</body>
+</html>
